@@ -1,0 +1,982 @@
+runtimeId: "runtime"
+dnsName: $dnsName
+runtimeEnv: dev
+
+components:
+  accountingService:
+    enabled: true
+    env:
+      - name: KAFKA_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-kafka:9092'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    initContainers:
+      - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 {{ include "otel-demo.name" . }}-kafka 9092; do echo waiting
+            for kafka; sleep 2; done;
+        image: $busyBoxImage
+        name: wait-for-kafka
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+    resources:
+      limits:
+        memory: 200Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    useDefault:
+      env: true
+  adService:
+    enabled: true
+    env:
+      - name: AD_SERVICE_PORT
+        value: '8080'
+      - name: FEATURE_FLAG_GRPC_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-featureflagservice:50053'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: OTEL_LOGS_EXPORTER
+        value: otlp
+    resources:
+      limits:
+        memory: 450Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  cartService:
+    enabled: true
+    env:
+      - name: CART_SERVICE_PORT
+        value: '8080'
+      - name: ASPNETCORE_URLS
+        value: http://*:$(CART_SERVICE_PORT)
+      - name: FEATURE_FLAG_GRPC_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-featureflagservice:50053'
+      - name: REDIS_ADDR
+        value: '{{ include "otel-demo.name" . }}-redis:6379'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    initContainers:
+      - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 {{ include "otel-demo.name" . }}-redis 6379; do echo waiting
+            for redis; sleep 2; done;
+        image: $busyBoxImage
+        name: wait-for-redis
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  checkoutService:
+    enabled: true
+    env:
+      - name: CHECKOUT_SERVICE_PORT
+        value: '8080'
+      - name: CART_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-cartservice:8080'
+      - name: CURRENCY_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-currencyservice:8080'
+      - name: EMAIL_SERVICE_ADDR
+        value: http://{{ include "otel-demo.name" . }}-emailservice:8080
+      - name: PAYMENT_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-paymentservice:8080'
+      - name: PRODUCT_CATALOG_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-productcatalogservice:8080'
+      - name: SHIPPING_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-shippingservice:8080'
+      - name: KAFKA_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-kafka:9092'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    initContainers:
+      - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 {{ include "otel-demo.name" . }}-kafka 9092; do echo waiting
+            for kafka; sleep 2; done;
+        image: $busyBoxImage
+        name: wait-for-kafka
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  currencyService:
+    enabled: true
+    env:
+      - name: CURRENCY_SERVICE_PORT
+        value: '8080'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: VERSION
+        value: '{{ .Chart.AppVersion }}'
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  emailService:
+    enabled: true
+    env:
+      - name: EMAIL_SERVICE_PORT
+        value: '8080'
+      - name: APP_ENV
+        value: production
+      - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318/v1/traces
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  featureflagService:
+    enabled: true
+    env:
+      - name: FEATURE_FLAG_SERVICE_PORT
+        value: '8081'
+      - name: FEATURE_FLAG_GRPC_SERVICE_PORT
+        value: '50053'
+      - name: DATABASE_URL
+        value: ecto://ffs:ffs@{{ include "otel-demo.name" . }}-ffspostgres:5432/ffs
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
+        value: grpc
+    initContainers:
+      - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 {{ include "otel-demo.name" . }}-ffspostgres 5432; do
+            echo waiting for ffspostgres; sleep 2; done
+        image: $busyBoxImage
+        name: wait-for-ffspostgres
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+    livenessProbe:
+      httpGet:
+        path: /featureflags/
+        port: 8081
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    ports:
+      - name: grpc
+        value: 50053
+      - name: http
+        value: 8081
+    resources:
+      limits:
+        memory: 175Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    useDefault:
+      env: true
+  ffsPostgres:
+    enabled: true
+    volumes:
+      - name: postgres-runner
+        mountPath: /var/run/postgresql/
+      - name: postgres-storage
+        mountPath: /var/lib/postgresql
+    env:
+      - name: POSTGRES_DB
+        value: ffs
+      - name: POSTGRES_USER
+        value: ffs
+      - name: POSTGRES_PASSWORD
+        value: ffs
+    ports:
+      - name: postgres
+        value: 5432
+    replicas: 1
+    resources:
+      limits:
+        memory: 120Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    podSecurityContext:
+      fsGroup: 1000750000
+      runAsUser: 1000750000
+      runAsGroup: 1000750000
+      runAsNonRoot: true
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+
+    useDefault:
+      env: true
+  frauddetectionService:
+    enabled: true
+    env:
+      - name: KAFKA_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-kafka:9092'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+    initContainers:
+      - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 {{ include "otel-demo.name" . }}-kafka 9092; do echo waiting
+            for kafka; sleep 2; done;
+        image: $busyBoxImage
+        name: wait-for-kafka
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    useDefault:
+      env: true
+  frontend:
+    strategy: Recreate
+    ingress:
+      enabled: true
+      tls:
+        - hosts:
+            - ''
+          secretName: tls-certificate
+      hosts:
+        - host: ''
+          paths:
+            - path: /
+              pathType: Prefix
+              port: 8080
+    volumes:
+      - name: frontend-web
+        mountPath: /home/nextjs
+    enabled: true
+    env:
+      - name: FRONTEND_PORT
+        value: '8080'
+      - name: FRONTEND_ADDR
+        value: :8080
+      - name: AD_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-adservice:8080'
+      - name: CART_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-cartservice:8080'
+      - name: CHECKOUT_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-checkoutservice:8080'
+      - name: CURRENCY_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-currencyservice:8080'
+      - name: PRODUCT_CATALOG_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-productcatalogservice:8080'
+      - name: RECOMMENDATION_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-recommendationservice:8080'
+      - name: SHIPPING_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-shippingservice:8080'
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: WEB_OTEL_SERVICE_NAME
+        value: frontend-web
+      - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: http://localhost:8080/otlp-http/v1/traces
+    resources:
+      limits:
+        cpu: 200m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 1001
+      runAsNonRoot: true
+      runAsUser: 1001
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  frontendProxy:
+    enabled: true
+    ingress:
+      enabled: true
+#      tls:
+#        - hosts:
+#            - frontend.{{ include "otel-demo.name" $ }}.{{ include "otel-demo.env" $ }}.{{ include "otel-demo.domain" $ }}
+#          secretName: tls-certificate
+      hosts:
+        - host: 'frontend.{{ include "otel-demo.name" $ }}.{{ include "otel-demo.env" $ }}.{{ include "otel-demo.domain" $ }}'
+          paths:
+            - path: /
+              pathType: Prefix
+              port: 8080
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "envsubst < /home/envoy/envoy.tmpl.yaml > /tmp/envoy.yaml && exec envoy -c /tmp/envoy.yaml"
+    mountedConfigMaps:
+      - name: envoy
+        mountPath: /home/envoy
+        data:
+          envoy.tmpl.yaml: |
+            static_resources:
+              listeners:
+                - address:
+                    socket_address:
+                      address: 0.0.0.0
+                      port_value: ${ENVOY_PORT}
+                  filter_chains:
+                    - filters:
+                        - name: envoy.filters.network.http_connection_manager
+                          typed_config:
+                            "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                            codec_type: AUTO
+                            stat_prefix: ingress_http
+                            tracing:
+                              spawn_upstream_span: true
+                              provider:
+                                name: envoy.tracers.opentelemetry
+                                typed_config:
+                                  "@type": type.googleapis.com/envoy.config.trace.v3.OpenTelemetryConfig
+                                  grpc_service:
+                                    envoy_grpc:
+                                      cluster_name: opentelemetry_collector_grpc
+                                    timeout: 0.250s
+                                  service_name: frontend-proxy
+                                  resource_detectors:
+                                    - name: envoy.tracers.opentelemetry.resource_detectors.environment
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.extensions.tracers.opentelemetry.resource_detectors.v3.EnvironmentResourceDetectorConfig
+                            route_config:
+                              name: local_route
+                              virtual_hosts:
+                                - name: frontend
+                                  domains:
+                                    - "*"
+                                  routes:
+                                    - match: { prefix: "/loadgen" }
+                                      route: { cluster: loadgen, prefix_rewrite: "/" }
+                                    - match: { prefix: "/otlp-http/" }
+                                      route: { cluster: opentelemetry_collector_http, prefix_rewrite: "/" }
+                                    - match: { prefix: "/jaeger" }
+                                      route: { cluster: jaeger }
+                                    - match: { prefix: "/grafana" }
+                                      route: { cluster: grafana }
+                                    - match: { prefix: "/" }
+                                      route: { cluster: frontend }
+                            http_filters:
+                              - name: envoy.filters.http.router
+                                typed_config:
+                                  "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+            
+              clusters:
+                - name: opentelemetry_collector_grpc
+                  type: STRICT_DNS
+                  lb_policy: ROUND_ROBIN
+                  typed_extension_protocol_options:
+                    envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+                      "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+                      explicit_http_config:
+                        http2_protocol_options: {}
+                  load_assignment:
+                    cluster_name: opentelemetry_collector_grpc
+                    endpoints:
+                      - lb_endpoints:
+                          - endpoint:
+                              address:
+                                socket_address:
+                                  address: ${OTEL_COLLECTOR_HOST}
+                                  port_value: ${OTEL_COLLECTOR_PORT_GRPC}
+                - name: opentelemetry_collector_http
+                  type: STRICT_DNS
+                  lb_policy: ROUND_ROBIN
+                  load_assignment:
+                    cluster_name: opentelemetry_collector_http
+                    endpoints:
+                      - lb_endpoints:
+                          - endpoint:
+                              address:
+                                socket_address:
+                                  address: ${OTEL_COLLECTOR_HOST}
+                                  port_value: ${OTEL_COLLECTOR_PORT_HTTP}
+                - name: frontend
+                  type: STRICT_DNS
+                  lb_policy: ROUND_ROBIN
+                  load_assignment:
+                    cluster_name: frontend
+                    endpoints:
+                      - lb_endpoints:
+                          - endpoint:
+                              address:
+                                socket_address:
+                                  address: ${FRONTEND_HOST}
+                                  port_value: ${FRONTEND_PORT}
+                - name: loadgen
+                  type: STRICT_DNS
+                  lb_policy: ROUND_ROBIN
+                  load_assignment:
+                    cluster_name: loadgen
+                    endpoints:
+                      - lb_endpoints:
+                          - endpoint:
+                              address:
+                                socket_address:
+                                  address: ${LOCUST_WEB_HOST}
+                                  port_value: ${LOCUST_WEB_PORT}
+                - name: grafana
+                  type: STRICT_DNS
+                  lb_policy: ROUND_ROBIN
+                  load_assignment:
+                    cluster_name: grafana
+                    endpoints:
+                      - lb_endpoints:
+                          - endpoint:
+                              address:
+                                socket_address:
+                                  address: ${GRAFANA_SERVICE_HOST}
+                                  port_value: ${GRAFANA_SERVICE_PORT}
+                - name: jaeger
+                  type: STRICT_DNS
+                  lb_policy: ROUND_ROBIN
+                  load_assignment:
+                    cluster_name: jaeger
+                    endpoints:
+                      - lb_endpoints:
+                          - endpoint:
+                              address:
+                                socket_address:
+                                  address: ${JAEGER_SERVICE_HOST}
+                                  port_value: ${JAEGER_SERVICE_PORT}
+            admin:
+              address:
+                socket_address:
+                  address: 0.0.0.0
+                  port_value: 10000
+            layered_runtime:
+              layers:
+                - name: static_layer_0
+                  static_layer:
+                    envoy:
+                      resource_limits:
+                        listener:
+                          example_listener_name:
+                            connection_limit: 10000
+
+    volumes:
+      - name: frontend-proxy
+        mountPath: /tmp
+    env:
+      - name: ENVOY_PORT
+        value: '8080'
+      - name: FRONTEND_PORT
+        value: '8080'
+      - name: FRONTEND_HOST
+        value: '{{ include "otel-demo.name" . }}-frontend'
+      - name: FEATURE_FLAG_SERVICE_PORT
+        value: '8081'
+      - name: FEATURE_FLAG_SERVICE_HOST
+        value: '{{ include "otel-demo.name" . }}-featureflagservice'
+      - name: LOCUST_WEB_PORT
+        value: '8089'
+      - name: LOCUST_WEB_HOST
+        value: '{{ include "otel-demo.name" . }}-loadgenerator'
+      - name: GRAFANA_SERVICE_PORT
+        value: '80'
+      - name: GRAFANA_SERVICE_HOST
+        value: '{{ include "otel-demo.name" . }}-grafana'
+      - name: JAEGER_SERVICE_PORT
+        value: '16686'
+      - name: JAEGER_SERVICE_HOST
+        value: '{{ include "otel-demo.name" . }}-jaeger-query'
+      - name: OTEL_COLLECTOR_PORT_GRPC
+        value: '4317'
+      - name: OTEL_COLLECTOR_PORT_HTTP
+        value: '4318'
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+    resources:
+      limits:
+        memory: 50Mi
+      requests:
+        cpu: 100m
+        memory: 50Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 101
+      runAsNonRoot: true
+      runAsUser: 101
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  kafka:
+    enabled: true
+    volumes:
+      - name: kafka-config
+        mountPath: /etc/kafka
+      - name: kafka-data
+        mountPath: /var/lib/kafka/data
+      - name: kafka-logs
+        mountPath: /var/log/kafka/
+    env:
+      - name: KAFKA_ADVERTISED_LISTENERS
+        value: PLAINTEXT://{{ include "otel-demo.name" . }}-kafka:9092
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: KAFKA_HEAP_OPTS
+        value: -Xmx200M -Xms200M
+    ports:
+      - name: plaintext
+        value: 9092
+      - name: controller
+        value: 9093
+    replicas: 1
+    resources:
+      limits:
+        memory: 500Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 1000
+      runAsNonRoot: true
+      runAsUser: 1000
+    useDefault:
+      env: true
+  loadgenerator:
+    enabled: true
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "locust -f locustfile.py -H ${LOCUST_HOST} --headless -u ${LOCUST_USERS} -r 5"
+    volumes:
+      - name: loadgenerator
+        mountPath: /tmp
+      - name: loadgenerator
+        mountPath: /opt/pw-browser
+    env:
+      - name: LOCUST_WEB_HOST
+        value: '{{ include "otel-demo.name" . }}-loadgenerator'
+      - name: LOCUST_WEB_PORT
+        value: '8089'
+      - name: LOCUST_USERS
+        value: '10'
+      #      - name: LOCUST_SPAWN_RATE
+      #        value: '1'
+      - name: LOCUST_HOST
+        value: http://{{ include "otel-demo.name" . }}-frontendproxy:8080
+      - name: LOCUST_HEADLESS
+        value: 'true'
+      #      - name: LOCUST_AUTOSTART
+      #        value: 'true'
+      #      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+      #        value: 'false'
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8089
+    useDefault:
+      env: true
+  paymentService:
+    volumes:
+      - name: payment-service
+        mountPath: /home/node
+    enabled: true
+    env:
+      - name: PAYMENT_SERVICE_PORT
+        value: '8080'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 1000
+      runAsNonRoot: true
+      runAsUser: 1000
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  productCatalogService:
+    enabled: true
+    env:
+      - name: PRODUCT_CATALOG_SERVICE_PORT
+        value: '8080'
+      - name: FEATURE_FLAG_GRPC_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-featureflagservice:50053'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  quoteService:
+    enabled: true
+    env:
+      - name: QUOTE_SERVICE_PORT
+        value: '8080'
+      - name: OTEL_PHP_AUTOLOAD_ENABLED
+        value: 'true'
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 40Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 33
+      runAsNonRoot: true
+      runAsUser: 33
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  recommendationService:
+    enabled: true
+    env:
+      - name: RECOMMENDATION_SERVICE_PORT
+        value: '8080'
+      - name: PRODUCT_CATALOG_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-productcatalogservice:8080'
+      - name: FEATURE_FLAG_GRPC_SERVICE_ADDR
+        value: '{{ include "otel-demo.name" . }}-featureflagservice:50053'
+      - name: OTEL_PYTHON_LOG_CORRELATION
+        value: 'true'
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    resources:
+      limits:
+        memory: 500Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+  redis:
+    volumes:
+      - name: redis-data
+        mountPath: /data
+        readOnly: false
+    enabled: true
+    imageOverride:
+      repository: $redisImage
+      tag: 7.2-alpine
+    ports:
+      - name: redis
+        value: 6379
+    replicas: 1
+    resources:
+      limits:
+        memory: 20Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 1000
+      runAsNonRoot: true
+      runAsUser: 999
+    useDefault:
+      env: true
+  shippingService:
+    enabled: true
+    env:
+      - name: SHIPPING_SERVICE_PORT
+        value: '8080'
+      - name: QUOTE_SERVICE_ADDR
+        value: http://{{ include "otel-demo.name" . }}-quoteservice:8080
+      - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317/v1/traces
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    service:
+      port: 8080
+    useDefault:
+      env: true
+default:
+  strategy: RollingUpdate
+  env:
+    - name: MY_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: OTEL_SERVICE_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.labels['app.kubernetes.io/component']
+    - name: OTEL_COLLECTOR_NAME
+      value: '{{ include "otel-demo.name" . }}-otelcol'
+    - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+      value: cumulative
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: deployment.environment=$(MY_POD_NAMESPACE),service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo
+  envOverrides:
+    - name: OTEL_COLLECTOR_NAME
+      value: $otelDnsName
+  image:
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - name: $pullSecret
+    repository: $otelImage
+    tag: ''
+  replicas: 1
+  schedulingRules:
+    affinity: { }
+    nodeSelector: { }
+    tolerations: [ ]
+  securityContext:
+    runAsNonRoot: true
+serviceAccount:
+  annotations: { }
+  create: true
+  name: ''
